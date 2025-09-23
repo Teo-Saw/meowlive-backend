@@ -8,7 +8,8 @@ export class StreamService {
   private readonly logger = new Logger(StreamService.name);
   private processes: Map<string, ChildProcessWithoutNullStreams> = new Map();
 
-  private outputDir = '/var/www/hls'; // make sure Nginx serves this folder
+  // private outputDir = '/opt/homebrew/var/www/hls/${streamKey}';
+  private outputDir = '/opt/homebrew/var/www/hls';
 
   startStream(streamKey: string) {
     const outputPath = path.join(this.outputDir, streamKey);
@@ -28,6 +29,8 @@ export class StreamService {
       '-hls_flags', 'delete_segments+append_list',
       `${outputPath}/index.m3u8`,
     ]);
+
+    this.logger.log('FFmpeg output path:', outputPath);
 
     ffmpeg.stderr.on('data', (data) => {
       this.logger.log(`[FFmpeg ${streamKey}]: ${data}`);
