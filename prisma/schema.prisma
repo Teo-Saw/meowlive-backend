@@ -1,0 +1,222 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+generator dbml {
+  provider = "prisma-dbml-generator" 
+}
+
+generator prisma-class-generator {
+  provider                 = "prisma-class-generator"
+  dryRun                   = "false"
+  output                   = "dtos"
+  useSwagger               = "true"
+  makeIndexFile            = "true"
+  separateRelationFields   = "true"
+  clientImportPath         = "@prisma/client"
+  useNonNullableAssertions = "false"
+  preserveDefaultNullable  = "false"
+}
+
+// -------------------------------- Models ------------------------------
+model Users {
+  id                 Int          @id @default(autoincrement())
+  fullName           String?
+  email              String       @unique
+  password           String
+  phoneNumber        String?
+  role               UserRole     @default(Normal)
+  profilePic         String?
+  lastActive         DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
+  isActive           UserStatus   @default(Inactive)
+}
+
+model Categories {
+  id                 Int          @id @default(autoincrement())
+  name               String?
+  description        String
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
+}
+
+model Posts {
+  id                 Int          @id @default(autoincrement())
+  title              String?
+  content            String
+  mediaUrl           String?
+  mediaType          MediaType    @default(Image)
+  userId             
+  categoryId
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
+
+  Users              Users        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Categories         Categories   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+}
+
+model Comments {
+  id                 Int          @id @default(autoincrement())
+  content            String?
+  userId             Int
+  postId             Int
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
+
+  Users              Users        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Posts              Posts        @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Likes {
+  id                 Int          @id @default(autoincrement())
+  userId             Int
+  postId             Int
+  createdAt          DateTime     @default(now())
+
+  Users              Users        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Posts              Posts        @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model Streams {
+  id                 Int          @id @default(autoincrement())
+  title              String
+  cmt                String
+  reaction           Int
+  streamKey          String?      @unique
+  viewerCount        Int
+  userId             Int
+  categoryId         Int
+  isLive             LiveStatus   @default(Live)
+  startAt            DateTime     @default(now())
+  endAt              DateTime?
+  
+  Users              Users        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Categories         Categories   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+}
+
+model Gifts {
+  id                 Int          @id @default(autoincrement())
+  name               String
+  price              Int
+  iconUrl            String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model GiftTransactions {
+  id                 Int          @id @default(autoincrement())
+  giftId             Int
+  senderId           Int
+  receiverId         Int
+  streamId           Int
+  quantity           Int          @default(0)
+  totalTokens        Int
+  createdAt          DateTime     @default(now())
+
+  Users              Users       @relation(fields: [giftId], references: [id])
+  Users              Users       @relation(fields: [senderId], references: [id])
+  Users              Users       @relation(fields: [receiverId], references: [id])
+  Streams            Streams     @relation(fields: [streamId], references: [id])
+}
+
+model Wallets {
+  id                 Int          @id @default(autoincrement())
+  userId             Int
+  tokenBalance       Int          @default(0)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
+
+  Users              Users        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Followers {
+  id                 Int          @id @default(autoincrement())
+  followId           Int
+  followingId        Int
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
+
+  Users              Users        @relation(fields: [followerId], references: [id], onDelete: Cascade)
+  Users              Users        @relation(fields: [followingId], references: [id], onDelete: Cascade)
+}
+
+model Notifications {
+  id                 Int          @id @default(autoincrement())
+  userId             Int
+  message            String
+  type               NotiType
+  isRead             Boolean      @default(now())
+  referencesId       Int
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
+
+  Users              Users        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TokenPurchases {
+  id                 Int          @id @default(autoincrement())
+  userId             Int
+  tokens             Int
+  amount             Int
+  paymentMethod      PaymentMethodType @default(Credit_Card)
+  paymentStatus      PaymentStatus     @default(pending)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
+
+  Users              Users        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// -------------------------------- Enums -------------------------------
+enum UserRole {
+  Normal
+  Admin
+  Cat
+}
+
+enum MediaType {
+  Image
+  Video
+}
+
+enum NotiType {
+  Gift
+  Follow
+  Stream
+  Post
+}
+
+enum PaymentMethodType {
+  Credit_Card
+  PayPal
+  Google_Pay
+  Apple_Pay
+}
+
+enum PaymentStatus {
+  Pending
+  Completed
+  Failed
+}
