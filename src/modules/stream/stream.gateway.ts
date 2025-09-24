@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
   WebSocketGateway,
   SubscribeMessage,
@@ -26,7 +27,8 @@ export class StreamGateway {
     @ConnectedSocket() _client: Socket,
   ) {
     const buffer = Buffer.from(data.chunk);
-    this.streamService.writeChunk(data.streamKey, buffer);
+    const source = getSocketStream(_client);
+    this.streamService.writeChunk(data.streamKey, buffer, source);
   }
 
   @SubscribeMessage('stop-stream')
@@ -34,4 +36,15 @@ export class StreamGateway {
     this.streamService.stopStream(data.streamKey);
     this.logger.log(`Stream stopped: ${data.streamKey}`);
   }
+}
+
+// To prevents Node.js process from getting overwhelmed with chunks.
+function getSocketStream(client: Socket): NodeJS.ReadableStream | undefined {
+
+  const transport: any = client.conn?.transport;
+
+  if (transport && transport.socket && typeof transport.socket.pause === 'function') {
+    return transport.socket as NodeJS.ReadableStream;
+  }
+  return undefined;
 }
